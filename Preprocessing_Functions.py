@@ -34,26 +34,13 @@ from sdv.single_table import CTGANSynthesizer
 from sdv.single_table import TVAESynthesizer
 from sdv.sampling import Condition
 import os
-def Synthetic_Data_Generator(df_train, synthesizer = "TVAE", conditions = None, epochs = 200, batch_size = 512, n_synthetic_data = 1000): 
+def Synthetic_Data_Generator(df_train, synthesizer = "TVAE", conditions = None, epochs = 200, batch_size = 128, n_synthetic_data = 1000): 
     """Conditions: "balanced" or None"""
     metadata = Metadata.detect_from_dataframe(data=df_train)
     metadata.validate()
     metadata.visualize()
     #* Synthetic Data generation conditions
     condition_list = []
-    if conditions == "balanced":
-        Balanced = Condition(
-                            num_rows=df_train[df_train['DR'] == 0].shape[0],
-                            column_values={'DR': '1'}
-                            )
-        print("Balancing condition applied: adding DR=1 samples only")
-        condition_list.append(Balanced)
-    elif conditions == None:
-        synthetic_data_count = Condition(
-                            num_rows=n_synthetic_data,
-                            )
-        print("Generating {n_synthetic_data} samples without conditions")
-        condition_list.append(synthetic_data_count)
         
     #* Synthesizer setup
     if synthesizer == "CTGAN":
@@ -78,14 +65,25 @@ def Synthetic_Data_Generator(df_train, synthesizer = "TVAE", conditions = None, 
                                 )
     else:
         return df_train
-    
-    output_path = './synthetic_dataset/synthetic_data.csv'
-    if os.path.exists(output_path):
-        os.remove(output_path)
-    synthetic_data = synthesizer.sample_from_conditions(
-        conditions=condition_list,
-        output_file_path=output_path
-    )
+    if conditions == "balanced":
+        Balanced = Condition(
+                            column_values={'DR': 1},
+                            num_rows=df_train[df_train['DR'] == 0].shape[0]
+                        )
+
+        print("Balancing condition applied: adding DR=1 samples only")
+        condition_list.append(Balanced)
+        output_path = './synthetic_dataset/synthetic_data.csv'
+        if os.path.exists(output_path):
+            os.remove(output_path)
+        synthesizer.fit(df_train)
+        synthetic_data = synthesizer.sample_from_conditions(
+            conditions=condition_list,
+            output_file_path=output_path)
+    else:
+        print("No balancing condition applied")
+        synthesizer.fit(df_train)
+        synthetic_data = synthesizer.sample(num_rows=n_synthetic_data)
     df_train = pd.concat([synthetic_data, df_train], ignore_index=True)
     return df_train
 
