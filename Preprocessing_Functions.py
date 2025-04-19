@@ -9,13 +9,13 @@ def Outlier_Removal(df_train, OD_majority, OD_minority):
     cat_cols = ['Gender', 'Community'] 
     y_col = 'DR'
 
-    print("Original class distribution:",df[y_col].value_counts())
+    print("Original class distribution:",df_train[y_col].value_counts())
     assert y_col in df_train.columns, f"'{y_col}' column is missing in the DataFrame."
     
     #* OUTLIER DETECTION START
-    available_cont_cols = [col for col in cont_cols if col in df.columns]
-    df_majority = df[df[y_col] == 0].copy()
-    df_minority = df[df[y_col] == 1].copy()
+    available_cont_cols = [col for col in cont_cols if col in df_train.columns]
+    df_majority = df_train[df_train[y_col] == 0].copy()
+    df_minority = df_train[df_train[y_col] == 1].copy()
     if OD_majority is not None:
         outliers_majority = OD_majority.fit_predict(df_majority[available_cont_cols])
         df_majority = df_majority[outliers_majority == 1]
@@ -33,7 +33,7 @@ from sdv.metadata import Metadata
 from sdv.single_table import CTGANSynthesizer
 from sdv.single_table import TVAESynthesizer
 from sdv.sampling import Condition
-
+import os
 def Synthetic_Data_Generator(df_train, synthesizer = "TVAE", conditions = None, epochs = 200, batch_size = 512, n_synthetic_data = 1000): 
     """Conditions: "balanced" or None"""
     metadata = Metadata.detect_from_dataframe(data=df_train)
@@ -78,11 +78,15 @@ def Synthetic_Data_Generator(df_train, synthesizer = "TVAE", conditions = None, 
                                 )
     else:
         return df_train
+    
+    output_path = './synthetic_dataset/synthetic_data.csv'
+    if os.path.exists(output_path):
+        os.remove(output_path)
     synthetic_data = synthesizer.sample_from_conditions(
         conditions=condition_list,
-        output_file_path='./synthetic_dataset/synthetic_data.csv'
+        output_file_path=output_path
     )
-    df_train = pd.concat(synthetic_data, df_train, ignore_index=True)
+    df_train = pd.concat([synthetic_data, df_train], ignore_index=True)
     return df_train
 
 from imblearn.over_sampling import SMOTENC
@@ -121,18 +125,22 @@ def apply_smotenc_oversampling(df_train):
 
 def apply_one_hot_encoding(df_train, df_test):
     community_mapping = {
-    0: 'Community_baihe', 1: 'Community_chonggu', 2: 'Community_huaxin', 3: 'Community_jinze', 4: 'Community_liantang', 5: 'Community_xianghuaqiao', 6: 'Community_xujin', 7: 'Community_yingpu', 8: 'Community_zhaoxian', 9: 'Community_zhujiajiao'
+        0: 'Community_baihe', 1: 'Community_chonggu', 2: 'Community_huaxin', 3: 'Community_jinze',
+        4: 'Community_liantang', 5: 'Community_xianghuaqiao', 6: 'Community_xujin', 7: 'Community_yingpu',
+        8: 'Community_zhaoxian', 9: 'Community_zhujiajiao'
     }
-    
+
     # Map integer community labels to names
     for df in [df_train, df_test]:
         if 'Community' in df.columns:
             df['Community'] = df['Community'].astype(int).map(community_mapping)
 
-    # One-hot encode the 'Community' column
-    for df in [df_train, df_test]:
-        if 'Community' in df.columns:
-            df = pd.get_dummies(df, columns=['Community'], prefix='Community', prefix_sep='_', drop_first=False, dtype=int)
+    # One-hot encode the 'Community' column — assign back properly!
+    if 'Community' in df_train.columns:
+        df_train = pd.get_dummies(df_train, columns=['Community'], prefix='Community', prefix_sep='_', drop_first=False, dtype=int)
+
+    if 'Community' in df_test.columns:
+        df_test = pd.get_dummies(df_test, columns=['Community'], prefix='Community', prefix_sep='_', drop_first=False, dtype=int)
 
     # Align test set to training columns
     final_train_cols = df_train.columns
@@ -140,6 +148,7 @@ def apply_one_hot_encoding(df_train, df_test):
     df_test = df_test.reindex(columns=final_train_cols, fill_value=0)
 
     return df_train, df_test
+
 
 def get_bmi(df, df_test):
     # Calculate BMI for both training and test sets
@@ -150,8 +159,8 @@ def get_bmi(df, df_test):
 from sklearn.model_selection import StratifiedKFold
 def FOLDS_GENERATOR(dataset, n_splits=5, random_state=None, 
                     OD_majority=None, OD_minority=None,
-                    oversampler_first = True, oversampler=None, 
-                    synthesizer = "TVAE", epochs = 200, n_synthetic_data=None, 
+                    oversampler_first = True, oversampler = None,
+                    synthesizer = "TVAE", epochs = 200, n_synthetic_data=0, 
                     scaler=None):
     
     cont_cols = ['Age', 'UAlb', 'Ucr', 'UACR', 'TC', 'TG', 'TCTG', 
@@ -182,11 +191,11 @@ def FOLDS_GENERATOR(dataset, n_splits=5, random_state=None,
         
         #* OVERSAMPLING & SYNTHETIC DATA GENERATION
         print("Before oversampling & synthetic data:", X_train_processed[["DR"]].value_counts())
-        if oversampler_first: 
+        if oversampler_first: #? oversampling first (50,50), then synthetic data (50,50)
             X_train_processed = apply_smotenc_oversampling(X_train_processed)
-            X_train_processed = Synthetic_Data_Generator(X_train_processed, synthesizer=synthesizer, conditions="None", epochs=epochs, batch_size=512, n_synthetic_data=n_synthetic_data)
-        else:
-            X_train_processed = Synthetic_Data_Generator(X_train_processed, synthesizer=synthesizer, conditions="None", epochs=epochs, batch_size=512, n_synthetic_data=None)
+            X_train_processed = Synthetic_Data_Generator(X_train_processed, synthesizer=synthesizer, conditions="Balanced", epochs=epochs, batch_size=512, n_synthetic_data=n_synthetic_data)
+        else: #? synthetic data first (90,10), then oversampling (50,50)
+            X_train_processed = Synthetic_Data_Generator(X_train_processed, synthesizer=synthesizer, conditions=None, epochs=epochs, batch_size=512, n_synthetic_data=n_synthetic_data)
             X_train_processed = apply_smotenc_oversampling(X_train_processed)
         print("After oversampling & synthetic data:", X_train_processed[["DR"]].value_counts())
         
