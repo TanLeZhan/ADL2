@@ -122,6 +122,46 @@ def apply_smotenc_oversampling(df_train):
 
     return df_resampled
 
+from sklearn.base import BaseEstimator
+import numpy as np
+
+class IQRDetector(BaseEstimator):
+    def __init__(self, factor=1.5):
+        """
+        Factor    Effect                          Use Case
+        -------   ------------------------------- -------------------------------
+        1.0       Very sensitive                   Noisy data, you want to clean aggressively
+        1.5       (default) Balanced               Standard statistical practice
+        2.0-3.0   Less sensitive                   Conservative — only extreme points flagged
+        """
+        self.factor = factor
+        self.columns_ = None
+        self.bounds_ = {}
+
+    def fit(self, X, y=None):
+        self.columns_ = X.columns
+        for col in self.columns_:
+            Q1 = X[col].quantile(0.25)
+            Q3 = X[col].quantile(0.75)
+            IQR = Q3 - Q1
+            lower = Q1 - self.factor * IQR
+            upper = Q3 + self.factor * IQR
+            self.bounds_[col] = (lower, upper)
+        return self
+
+    def predict(self, X):
+        is_outlier = pd.Series([False] * X.shape[0], index=X.index)
+        for col in self.columns_:
+            lower, upper = self.bounds_[col]
+            is_outlier |= (X[col] < lower) | (X[col] > upper)
+        return np.where(is_outlier, -1, 1)  # -1 = outlier, 1 = inlier
+
+    def fit_predict(self, X, y=None):
+        self.fit(X, y)
+        return self.predict(X)
+
+
+    
 def apply_one_hot_encoding(df_train, df_test):
     community_mapping = {
         0: 'Community_baihe', 1: 'Community_chonggu', 2: 'Community_huaxin', 3: 'Community_jinze',
@@ -205,13 +245,15 @@ def FOLDS_GENERATOR(dataset, n_splits=5, random_state=None,
         X_train_processed[cont_cols] = scaler.fit_transform(X_train_processed[cont_cols])
         test[cont_cols] = scaler.transform(test[cont_cols])
         # Append processed data (excluding the target column 'DR')
-        kFolds_list.append((X_train_processed.drop(columns=["DR"]),
-                            test.drop(columns=["DR"]),
-                            X_train_processed[["DR"]],
-                            test[["DR"]]))
-
-        print(f"Fold: {fold+1}, Train: {X_train_processed.shape}, Test: {test.shape}")
-    
+        
+        
+        kFolds_list.append((
+                            X_train_processed.drop(columns=['DR']),
+                            test.drop(columns=['DR']),
+                            X_train_processed['DR'].values.reshape(-1, 1),  # Ensures the target is 2D
+                            test['DR'].values.reshape(-1, 1)  # Ensures the target is 2D
+                        ))
+        break
+    print(f"Fold: {fold+1}, Train: {X_train_processed.drop(columns=['DR']).shape}, Test: {test.drop(columns=['DR']).shape}")
     return kFolds_list
-
 #? Preprocessing functions for the dataset END

@@ -6,44 +6,31 @@ import pandas as pd
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using", device)
 def fold_to_dataloader_tensor(train_x, test_x, train_y, test_y, batch_size=64, device=device):
-    # Ensure all values are numeric (convertible)
-    if train_x.isnull().values.any():
-        raise ValueError("NaN values found in train_x before conversion. Check for non-numeric or missing values.")
-    if train_y.isnull().values.any():
-        raise ValueError("NaN values found in train_y before conversion. Check for non-numeric or missing values.")
-    # Debug conversion issues for test_x
-    converted_test_x = test_x.apply(pd.to_numeric, errors='coerce')
-    nan_columns = converted_test_x.columns[converted_test_x.isnull().any()]
+    # Convert all to DataFrames to simplify null checks and conversions
+    train_x = pd.DataFrame(train_x).apply(pd.to_numeric, errors='coerce')
+    test_x = pd.DataFrame(test_x).apply(pd.to_numeric, errors='coerce')
+    train_y = pd.DataFrame(train_y).squeeze().apply(pd.to_numeric, errors='coerce')
+    test_y = pd.DataFrame(test_y).squeeze().apply(pd.to_numeric, errors='coerce')
 
-    if not nan_columns.empty:
-        for col in nan_columns:
-            bad_values = test_x[col][pd.to_numeric(test_x[col], errors='coerce').isna()].unique()
-            print(f"❌ Column '{col}' has values that couldn't be converted: {bad_values}")
+    # Check for any NaNs after conversion
+    for name, df in zip(['train_x', 'test_x', 'train_y', 'test_y'], [train_x, test_x, train_y, test_y]):
+        if df.isnull().values.any():
+            bad_cols = df.columns[df.isnull().any()] if hasattr(df, 'columns') else []
+            raise ValueError(f"❌ NaNs detected in {name} after conversion in columns: {list(bad_cols)}")
 
-        raise ValueError(f"NaN values found in test_x after conversion in columns: {list(nan_columns)}")
-
-# Similarly for test_y if it's multicolumn (or do it directly if it's Series)
-
-    train_x = train_x.apply(pd.to_numeric, errors='coerce')
-    train_y = train_y.apply(pd.to_numeric, errors='coerce')
-    
-    test_x = test_x.apply(pd.to_numeric, errors='coerce')
-    test_y = test_y.apply(pd.to_numeric, errors='coerce')
-    if test_x.isnull().values.any():
-        raise ValueError("NaN values found in test_x after conversion to numeric. Check for non-numeric or missing values.")
-
-    if test_y.isnull().values.any():
-        raise ValueError("NaN values found in test_y after conversion to numeric. Check for non-numeric or missing values.")
+    # Create PyTorch datasets and loaders
     train_dataset = TensorDataset(
-        torch.tensor(train_x.values,dtype=torch.float32).to(device), 
-        torch.tensor(train_y.values,dtype=torch.float32).to(device))
+                                torch.tensor(train_x.values, dtype=torch.float32).to(device),
+                                torch.tensor(train_y.values, dtype=torch.float32).view(-1, 1).to(device)
+                            )
     val_dataset = TensorDataset(
-        torch.tensor(test_x.values,dtype=torch.float32).to(device), 
-        torch.tensor(test_y.values,dtype=torch.float32).to(device))
-
+                            torch.tensor(test_x.values, dtype=torch.float32).to(device),
+                            torch.tensor(test_y.values, dtype=torch.float32).view(-1, 1).to(device)
+                        )
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
     val_loader = DataLoader(val_dataset, batch_size=len(val_dataset), shuffle=True, drop_last=True)
-    return train_loader, val_loader 
+
+    return train_loader, val_loader
 
 def get_feature_count(loader):
     """returns the number of features in the dataset"""
