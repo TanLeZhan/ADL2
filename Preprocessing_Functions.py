@@ -38,7 +38,7 @@ def Synthetic_Data_Generator(df_train, synthesizer = "TVAE", conditions = None, 
     """Conditions: "balanced" or None"""
     metadata = Metadata.detect_from_dataframe(data=df_train)
     metadata.validate()
-    metadata.visualize()
+    # metadata.visualize()
     #* Synthetic Data generation conditions
     condition_list = []
         
@@ -51,8 +51,9 @@ def Synthetic_Data_Generator(df_train, synthesizer = "TVAE", conditions = None, 
                                 epochs = epochs,
                                 verbose=True, 
                                 cuda=True,
-                                batch_size=batch_size
-                                )   
+                                batch_size=120 # need to be divisible by 10 or pac size
+                                )  
+        # df_train = make_divisible(df_train, 10)
     elif synthesizer == "TVAE":
         synthesizer = TVAESynthesizer(
                                 metadata=metadata, 
