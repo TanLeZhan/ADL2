@@ -209,9 +209,9 @@ def FOLDS_GENERATOR(dataset, n_splits=5, random_state=None,
                             test.drop(columns=["DR"]),
                             X_train_processed[["DR"]],
                             test[["DR"]]))
-
+        
         print(f"Fold: {fold+1}, Train: {X_train_processed.shape}, Test: {test.shape}")
-    
+        break #! one fold only for testing
     return kFolds_list
 
 #? Preprocessing functions for the dataset END
