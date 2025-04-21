@@ -1,3 +1,0 @@
-synthesizer: TVAE
-epochs: 1000
-n_synthetic: 10000(including )

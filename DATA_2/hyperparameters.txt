@@ -1,0 +1,5 @@
+synthesizer: TVAE
+epochs: 1000
+n_synthetic: 10000(including original datas)
+OD majority: IQR factor = 1.5
+OD minority: IQR factor = 1.5
