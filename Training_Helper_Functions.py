@@ -49,6 +49,20 @@ def init_weights(model):
             
 class FocalLoss(nn.Module):
     def __init__(self, alpha=0.25, gamma=2.0, reduction='mean'):
+        """
+        
+        alpha = 0.25: down-weights loss from class 0 and up-weights class 1 (if 1 is the minority class).
+        alpha = 0.5: no bias; equal weighting for both classes.
+        
+        gamma = 0: behaves like normal BCE loss.
+        gamma = 2: heavily penalizes incorrect or uncertain predictions, and gives less loss to easy ones.
+        
+        
+        Args:
+            alpha (float, optional): _description_. Defaults to 0.25.
+            gamma (float, optional): _description_. Defaults to 2.0.
+            reduction (str, optional): _description_. Defaults to 'mean'.
+        """
         super(FocalLoss, self).__init__()
         self.alpha = alpha
         self.gamma = gamma

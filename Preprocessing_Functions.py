@@ -41,7 +41,6 @@ def Synthetic_Data_Generator(df_train, synthesizer = "TVAE", conditions = None, 
     # metadata.visualize()
     #* Synthetic Data generation conditions
     condition_list = []
-        
     #* Synthesizer setup
     if synthesizer == "CTGAN":
         synthesizer = CTGANSynthesizer(
@@ -195,6 +194,12 @@ def get_bmi(df, df_test):
     df_test['BMI'] = df_test['Weight'] / ((df_test['Height'] / 100) ** 2)
     return df, df_test
 
+def get_TCTG(df, df_test):
+    # Calculate TCTG for both training and test sets
+    df['TCTG'] = df['TC'] / df['TG']
+    df_test['TCTG'] = df_test['TC'] / df_test['TG']
+    return df, df_test
+
 from sklearn.model_selection import StratifiedKFold
 def FOLDS_GENERATOR(dataset, n_splits=5, random_state=None, 
                     OD_majority=None, OD_minority=None,
@@ -232,7 +237,7 @@ def FOLDS_GENERATOR(dataset, n_splits=5, random_state=None,
         print("Before oversampling & synthetic data:", X_train_processed[["DR"]].value_counts())
         if oversampler_first: #? oversampling first (50,50), then synthetic data (50,50)
             X_train_processed = apply_smotenc_oversampling(X_train_processed)
-            X_train_processed = Synthetic_Data_Generator(X_train_processed, synthesizer=synthesizer, conditions="Balanced", epochs=epochs, batch_size=512, n_synthetic_data=n_synthetic_data)
+            X_train_processed = Synthetic_Data_Generator(X_train_processed, synthesizer=synthesizer, conditions="balanced", epochs=epochs, batch_size=512, n_synthetic_data=n_synthetic_data)
         else: #? synthetic data first (90,10), then oversampling (50,50)
             X_train_processed = Synthetic_Data_Generator(X_train_processed, synthesizer=synthesizer, conditions=None, epochs=epochs, batch_size=512, n_synthetic_data=n_synthetic_data)
             X_train_processed = apply_smotenc_oversampling(X_train_processed)
@@ -240,6 +245,7 @@ def FOLDS_GENERATOR(dataset, n_splits=5, random_state=None,
         
         #* Calculate BMI & ENCODING
         X_train_processed, test = get_bmi(X_train_processed, test)
+        X_train_processed, test = get_TCTG(X_train_processed, test)
         X_train_processed, test = apply_one_hot_encoding(X_train_processed, test)
         #* Scaler
         X_train_processed[cont_cols] = scaler.fit_transform(X_train_processed[cont_cols])
