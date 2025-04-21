@@ -157,12 +157,13 @@ def Synthetic_Data_Generator(df_train, fold, synthesizer = "TVAE", epochs = 200,
 
     # Split remaining evenly across classes
     extra_per_class = remaining // 2
-
+    # print(extra_per_class)
+    # print(remaining - extra_per_class)
     # (optional: +1 to one class if remaining is odd)
     cond_extra_0 = Condition(column_values={'DR': 0}, num_rows=extra_per_class)
     cond_extra_1 = Condition(column_values={'DR': 1}, num_rows=remaining - extra_per_class)
 
-    extra_data = synthesizer.sample_from_conditions([cond_extra_0, cond_extra_1])
+    extra_data = synthesizer.sample_from_conditions([cond_extra_0, cond_extra_1], output_file_path="./DATA/synthetic_training_set/synthetic_data_conditions.csv")
 
     # Step 5: Combine all the synthetic garbage
     synthetic_data = pd.concat([balanced_data, extra_data], ignore_index=True)
