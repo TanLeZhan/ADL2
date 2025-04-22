@@ -1,0 +1,11 @@
+
+smotenc included before synthesizer
+kFolds = FOLDS_GENERATOR1(training_set, n_splits=5, random_state=42,             
+                            OD_majority = IQRDetector(factor=1),
+                            # OD_minority = IsolationForest(contamination=0.015, random_state=42),
+                            OD_minority = IQRDetector(factor=1.5),
+                            synthesizer = "CTGAN",
+                            epochs = 500,
+                            n_synthetic_data = 10000,
+                            scaler=scaler,      
+                            ) 
