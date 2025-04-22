@@ -15,6 +15,14 @@ Diabetic Retinopathy (DR) is a major cause of blindness, affecting ~35% of diabe
 
 ---
 
+## Dataset
+
+A population-based [dataset](https://doi.org/10.1371/journal.pone.0275617.s001) of 6,374 diabetic patients from a Chinese cohort, including clinical biomarkers and demographic data.
+
+**Reference**: [Predicting the risk of diabetic retinopathy using explainable machine learning algorithms - ScienceDirect](https://www.sciencedirect.com/science/article/pii/S1871402123002151#sec2.2.2)
+
+---
+
 ## Results
 
 | Metric       | Score     |
@@ -35,3 +43,15 @@ Despite high accuracy, class imbalance affects precision and recall. Further tun
 git clone https://github.com/TanLeZhan/ADL2.git
 cd ADL2
 pip install -r requirements.txt
+```
+After downloading the dataset, place it in the ```original_dataset``` folder and rename it as ```raw_data```. Run the following command below to get a cleaned dataset labelled ```preprocessed_data_OHE```.
+```bash
+python data_processing.py
+```
+
+To get the dataset labelled as ```preprocessed_data_encoded```, run ```Input Dataset.ipynb```
+
+Run the notebook ```Final Dataset Generator.ipynb``` to get the final augmented input data set for model training.
+
+Run the notebook ```Final Pipeline for report.ipynb```  to train the model and get model performance results.
+
