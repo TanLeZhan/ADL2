@@ -1,0 +1,3 @@
+no OD
+TVAE 1000epochs, 10000 samples
+standard scaler
