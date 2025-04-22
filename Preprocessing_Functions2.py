@@ -143,7 +143,8 @@ def Synthetic_Data_Generator(df_train, fold, synthesizer = "TVAE", epochs = 200,
 
     # Step 2: Balance to the max count
     balanced_per_class = max(count_0, count_1)
-
+    print(balanced_per_class - count_0)
+    print(balanced_per_class - count_1)
     cond_0 = Condition(column_values={'DR': 0}, num_rows=balanced_per_class - count_0)
     cond_1 = Condition(column_values={'DR': 1}, num_rows=balanced_per_class - count_1)
 
@@ -163,7 +164,7 @@ def Synthetic_Data_Generator(df_train, fold, synthesizer = "TVAE", epochs = 200,
     cond_extra_0 = Condition(column_values={'DR': 0}, num_rows=extra_per_class)
     cond_extra_1 = Condition(column_values={'DR': 1}, num_rows=remaining - extra_per_class)
 
-    extra_data = synthesizer.sample_from_conditions([cond_extra_0, cond_extra_1], output_file_path="./DATA/synthetic_training_set/synthetic_data_conditions.csv")
+    extra_data = synthesizer.sample_from_conditions([cond_extra_0, cond_extra_1], max_tries_per_batch= 500, output_file_path="./DATA/synthetic_training_set/synthetic_data_conditions.csv")
 
     # Step 5: Combine all the synthetic garbage
     synthetic_data = pd.concat([balanced_data, extra_data], ignore_index=True)
@@ -181,7 +182,7 @@ def Synthetic_Data_Generator(df_train, fold, synthesizer = "TVAE", epochs = 200,
     df_train = pd.concat([synthetic_data, df_train], ignore_index=True)
     return df_train
 
-def Synthetic_Data_Generator2(df_train, fold, synthesizer ="TVAE", epochs=200, batch_size=128, n_synthetic_data=1000): 
+def Synthetic_Data_Generator2(df_train, fold, synthesizer="TVAE", epochs=200, batch_size=128, n_synthetic_data=1000):
 
     def safe_sample(synth, cond, target, max_retries=5):
         collected = []
@@ -199,25 +200,25 @@ def Synthetic_Data_Generator2(df_train, fold, synthesizer ="TVAE", epochs=200, b
     metadata = Metadata.detect_from_dataframe(data=df_train)
     metadata.validate()
 
-    if synthesizer  == "CTGAN":
-        filepath = f"{synthesizer }_{epochs}.pkl"
+    if synthesizer == "CTGAN":
+        filepath = f"{synthesizer}_{epochs}.pkl"
         synthesizer = CTGANSynthesizer(
-            metadata=metadata, 
-            enforce_min_max_values=True, 
-            enforce_rounding=True, 
+            metadata=metadata,
+            enforce_min_max_values=True,
+            enforce_rounding=True,
             epochs=epochs,
-            verbose=True, 
+            verbose=True,
             cuda=True,
             batch_size=300
         )
-    elif synthesizer  == "TVAE":
-        filepath = f"{synthesizer }_{epochs}.pkl"
+    elif synthesizer == "TVAE":
+        filepath = f"{synthesizer}_{epochs}.pkl"
         synthesizer = TVAESynthesizer(
-            metadata=metadata, 
-            enforce_min_max_values=True, 
-            enforce_rounding=True, 
+            metadata=metadata,
+            enforce_min_max_values=True,
+            enforce_rounding=True,
             epochs=epochs,
-            verbose=True, 
+            verbose=True,
             cuda=True,
             batch_size=batch_size
         )
@@ -228,37 +229,24 @@ def Synthetic_Data_Generator2(df_train, fold, synthesizer ="TVAE", epochs=200, b
     synthesizer.fit(df_train)
     synthesizer.save(filepath)
 
-    count_0 = df_train[df_train['DR'] == 0].shape[0]
-    count_1 = df_train[df_train['DR'] == 1].shape[0]
-    balanced_per_class = max(count_0, count_1)
+    # Calculate class proportions
+    class_counts = df_train['DR'].value_counts(normalize=True)
+    synthetic_data = []
 
-    print("Generating balanced synthetic samples...")
-    cond_0 = Condition(column_values={'DR': 0}, num_rows=balanced_per_class - count_0)
-    cond_1 = Condition(column_values={'DR': 1}, num_rows=balanced_per_class - count_1)
+    print("Generating synthetic samples per class based on distribution...")
+    for cls, proportion in class_counts.items():
+        n_samples = int(n_synthetic_data * proportion)
+        cond = Condition(column_values={'DR': int(cls)}, num_rows=n_samples)
+        sampled = safe_sample(synthesizer, cond, n_samples)
+        synthetic_data.append(sampled)
 
-    balanced_0 = safe_sample(synthesizer, cond_0, balanced_per_class - count_0)
-    balanced_1 = safe_sample(synthesizer, cond_1, balanced_per_class - count_1)
-    balanced_data = pd.concat([balanced_0, balanced_1], ignore_index=True)
-
-    current_total = balanced_data.shape[0]
-    remaining = n_synthetic_data - current_total
-
-    extra_per_class = remaining // 2
-    cond_extra_0 = Condition(column_values={'DR': 0}, num_rows=extra_per_class)
-    cond_extra_1 = Condition(column_values={'DR': 1}, num_rows=remaining - extra_per_class)
-
-    print("Generating additional synthetic samples to hit target...")
-    extra_0 = safe_sample(synthesizer, cond_extra_0, extra_per_class)
-    extra_1 = safe_sample(synthesizer, cond_extra_1, remaining - extra_per_class)
-    extra_data = pd.concat([extra_0, extra_1], ignore_index=True)
-
-    synthetic_data = pd.concat([balanced_data, extra_data], ignore_index=True)
+    synthetic_data = pd.concat(synthetic_data, ignore_index=True)
 
     print("Final synthetic class distribution:")
     print(synthetic_data['DR'].value_counts())
 
     os.makedirs("./DATA/synthetic_training_set", exist_ok=True)
-    synthetic_data.to_csv(f"./DATA/synthetic_training_set/synthetic_data_{fold}_{epochs}_TVAE.csv", index=False)
+    synthetic_data.to_csv(f"./DATA/synthetic_training_set/synthetic_data_{fold}_{epochs}_{type(synthesizer).__name__}.csv", index=False)
 
     quality_report = evaluate_quality(df_train, synthetic_data, metadata)
     df_train = pd.concat([synthetic_data, df_train], ignore_index=True)

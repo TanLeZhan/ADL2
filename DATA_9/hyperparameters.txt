@@ -1,0 +1,9 @@
+SMOTENC first
+kFolds = FOLDS_GENERATOR1(training_set, n_splits=5, random_state=42,             
+                            OD_majority = IQRDetector(factor=1),
+                            OD_minority = IQRDetector(factor=2.5),
+                            synthesizer = "TVAE",
+                            epochs = 1000,
+                            n_synthetic_data = 10000,
+                            scaler=scaler,      
+                            ) 
