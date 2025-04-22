@@ -1,0 +1,8 @@
+"synthesizer": "TVAE",
+        "epochs": 1000,
+        "n_synthetic": 10000,
+        "od_majority": IQRDetector(factor=1.5),
+        "od_minority": IQRDetector(factor=1.5),
+        "scaler": "Standard"
+
+this is the hyperparams used in DATA_4 (now deleted because it was using the wrong synthesizer)

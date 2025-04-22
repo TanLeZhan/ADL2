@@ -153,7 +153,11 @@ class StrategyEvaluator:
         if not self.metrics:
             raise ValueError("No metrics to visualize - run evaluations first")
             
-        strategies = list(self.metrics.keys())
+        ground_truths = [k for k in self.metrics.keys() if k.startswith("GroundTruth")]
+        strategies = [k for k in self.metrics.keys() if k not in ground_truths]
+
+        gt_colors = ['#666666', '#999999']  # Dark and light gray for ground truths
+        strat_color = 'skyblue'           
 
         ground_truth_metrics = {
             'class_distribution': self._calculate_class_distribution(self.original_data),
@@ -163,34 +167,48 @@ class StrategyEvaluator:
         }
         
         # 1. Class Balance Comparison - Fixed duplicate saving issue
-        plt.figure(figsize=(14, 7))
+        plt.figure(figsize=(16, 7))
 
-        gt_ratio = ground_truth_metrics['class_distribution']['balance_ratio']
-        bars = plt.bar(['Ground Truth'], [gt_ratio], color='0.8', alpha=0.7)
+        gt_ratios = [self.metrics[gt]['class_distribution']['balance_ratio'] 
+                for gt in ground_truths]
+        gt_bars = plt.bar(ground_truths, gt_ratios, color=gt_colors, alpha=0.7)
 
-        balance_ratios = [m['class_distribution']['balance_ratio'] 
-                         for m in self.metrics.values()]
+        strat_ratios = [self.metrics[s]['class_distribution']['balance_ratio'] 
+                   for s in strategies]
+        strat_bars = plt.bar(strategies, strat_ratios, color=strat_color)
         
-        bars = plt.bar(strategies, balance_ratios, color='skyblue')
-        for bar in bars:
-            height = bar.get_height()
-            plt.text(bar.get_x() + bar.get_width()/2., height,
-                    f'{height:.2f}',
-                    ha='center', va='bottom', fontsize=10)
+        for bars in [gt_bars, strat_bars]:
+            for bar in bars:
+                height = bar.get_height()
+                plt.text(bar.get_x() + bar.get_width()/2., height,
+                        f'{height:.2f}',
+                        ha='center', va='bottom', fontsize=10)
         
         plt.title('Class Balance Ratio Comparison\n(1.0 = Perfect Balance)', fontsize=14, pad=20)
         plt.ylabel('Minority/Majority Ratio', fontsize=12)
         plt.xticks(rotation=45, fontsize=10)
-        plt.axhline(1.0, color='red', linestyle='--', linewidth=1.5, label='Ideal Balance')
-        plt.legend(loc='upper right')
+        plt.axhline(1.0, color='red', linestyle='--', linewidth=1.5)
+
+        from matplotlib.patches import Patch
+        legend_elements = [
+            Patch(facecolor=gt_colors[0], label='Ground Truth (DATA_0)'),
+            Patch(facecolor=gt_colors[1], label='Ground Truth (DATA_1)'),
+            Patch(facecolor=strat_color, label='Synthetic Strategies'),
+            Patch(facecolor='red', linestyle='--', label='Ideal Balance')
+        ]
+        plt.legend(handles=legend_elements, loc='upper right')
+
         plt.grid(axis='y', alpha=0.3)
         plt.tight_layout()
         plt.savefig(self.output_dir / 'class_balance_comparison.png', dpi=300, bbox_inches='tight')
         plt.close()  # Removed show() to prevent display when running script
         
         # 2. Feature Preservation (KS Statistics)
-        plt.figure(figsize=(12, 6))
-        plt.bar(['Ground Truth'], [0], color='0.8', alpha=0.7)
+        plt.figure(figsize=(16, 6))
+
+        # Ground truth would be 0 (perfect preservation)
+        plt.bar(ground_truths, [0]*len(ground_truths), color=gt_colors, alpha=0.7)
+
         avg_ks = [m['feature_metrics']['avg_ks'] for m in self.metrics.values()]
         bars = plt.bar(strategies, avg_ks, color='lightgreen')
         for bar in bars:
@@ -205,11 +223,21 @@ class StrategyEvaluator:
         plt.grid(axis='y', alpha=0.3)
         plt.tight_layout()
         plt.savefig(self.output_dir / 'feature_preservation_ks.png', dpi=300, bbox_inches='tight')
+        from matplotlib.patches import Patch
+        legend_elements = [
+            Patch(facecolor=gt_colors[0], label='Ground Truth (DATA_0)'),
+            Patch(facecolor=gt_colors[1], label='Ground Truth (DATA_1)'),
+            Patch(facecolor=strat_color, label='Synthetic Strategies')
+        ]
+        plt.legend(handles=legend_elements, loc='upper right')
         plt.close()
         
         # 3. Minority Sample Quality
-        plt.figure(figsize=(12, 6))
-        plt.bar(['Ground Truth'], [0], color='0.8', alpha=0.7)
+        plt.figure(figsize=(16, 6))
+
+        # Ground truth would be 0 (perfect match)
+        plt.bar(ground_truths, [0]*len(ground_truths), color=gt_colors, alpha=0.7)
+        
         neighbor_dists = [m['minority_quality']['avg_neighbor_distance'] 
                          for m in self.metrics.values()]
         bars = plt.bar(strategies, neighbor_dists, color='salmon')
