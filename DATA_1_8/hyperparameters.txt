@@ -1,0 +1,7 @@
+synthesizer: CTGAN
+epochs: 1000
+n_synthetic: 10000(including original datas)
+OD majority: IQR factor = 1
+OD minority: IQR factor = 1
+
+this is the hyperparams used in DATA_8 (now deleted because it was using the wrong synthesizer)

@@ -1,5 +1,0 @@
-synthesizer: CTGAN
-epochs: 2500
-n_synthetic: 10000(including original datas)
-OD majority: IQR factor = 1
-OD minority: IQR factor = 1
