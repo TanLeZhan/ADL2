@@ -6,7 +6,7 @@ Diabetic Retinopathy (DR) is a major cause of blindness, affecting ~35% of diabe
 
 ## Objectives
 
-- Preprocess tabular data with class imbalance (~10:1).
+- Preprocess tabular data with class imbalance (~9:1).
 - Apply outlier detection (IQR-based) and oversampling (SMOTENC).
 - Generate synthetic samples using SDV’s **TVAE** and **CTGAN**.
 - Train and evaluate deep learning models with proper validation strategies.
