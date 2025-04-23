@@ -1,0 +1,4 @@
+OD MAJORITY IQR 1.5
+OD MINORTIY IQR 1.5
+NO synthetic
+only smote
