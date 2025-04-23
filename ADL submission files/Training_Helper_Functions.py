@@ -21,11 +21,11 @@ def fold_to_dataloader_tensor(train_x, test_x, train_y, test_y, batch_size=64, d
     # Create PyTorch datasets and loaders
     train_dataset = TensorDataset(
                                 torch.tensor(train_x.values, dtype=torch.float32).to(device),
-                                torch.tensor(train_y.values, dtype=torch.float32).view(-1, 1).to(device)
+                                torch.tensor(train_y.values, dtype=torch.float32).to(device)
                             )
     val_dataset = TensorDataset(
                             torch.tensor(test_x.values, dtype=torch.float32).to(device),
-                            torch.tensor(test_y.values, dtype=torch.float32).view(-1, 1).to(device)
+                            torch.tensor(test_y.values, dtype=torch.float32).to(device)
                         )
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
     # val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
