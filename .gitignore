@@ -1,4 +1,5 @@
 .venv
+venv
 synthetic_dataset/*.csv
 *.db
 # Ignore Python cache files
